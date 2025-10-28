@@ -42,4 +42,19 @@ void init_repo() {
   } else {
     printf("HOME directory: %s\n", home);
   }
+  char repo_path[512];
+  snprintf(repo_path, sizeof(repo_path), "%s/.dotman", home);
+  // create folders with basic permissions
+  if (mkdir(repo_path, 0755) == 0) {
+    printf("Dotman repository created at %s\n", repo_path);
+    // Create subfolders
+    char files_path[512];
+    char backup_path[512];
+    snprintf(files_path, sizeof(files_path), "%s/files", repo_path);
+    snprintf(backup_path, sizeof(backup_path), "%s/backup", repo_path);
+    mkdir(files_path, 0755);
+    mkdir(backup_path, 0755);
+  } else {
+    perror("Failed to create repo");
+  }
 }
