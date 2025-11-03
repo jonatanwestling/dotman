@@ -63,6 +63,11 @@ static int check_file_status(const char *filepath) {
   return 0;
 }
 
+/**
+ * @brief Initialize the dotman repository.
+ * 
+ * @return int 0 on success, non-zero on error
+ */
 int dotman_init(void) {
   const char *home = getenv("HOME");
   if (!home) {
@@ -90,6 +95,12 @@ int dotman_init(void) {
   return 0;
 }
 
+/**
+ * @brief Add a file to the dotman repository and replace it with a symlink.
+ * 
+ * @param filepath
+ * @return int 0 on success, non-zero on error
+ */
 int dotman_add(const char *filepath) {
   if (!filepath) return -1;
   printf("Filepath: %s\n", filepath);
