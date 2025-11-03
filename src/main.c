@@ -1,3 +1,14 @@
+/**
+ * @file main.c
+ * @author Jonatan Westling
+ * @brief Main file for the dotman project
+ * @version 0.1
+ * @date 2025-11-03
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
+
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -165,6 +176,15 @@ void add_file(const char *filepath) {
   }
 }
 
+/**
+ * @brief Check the status of the given file path.
+ * 
+ * @param filepath 
+ * @return int 0: normal file
+ *             1: already tracked by dotman
+ *             2: external symlink, user wants to import
+ *             3: external symlink, user chooses to skip
+ */
 int check_file_status(const char *filepath) {
   struct stat path_stat;
   // Check if the given path exists and is a symbolic link
