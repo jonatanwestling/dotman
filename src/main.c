@@ -1,16 +1,20 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/_types/_ssize_t.h>
+#include <unistd.h>
 
 #include <stdlib.h>
 #include <sys/stat.h>
 
 // add files
+#include <errno.h>
 #include <libgen.h> // for basename()
 #include <unistd.h> // for symlink(), access()
 
 void init_repo();
 void add_file(const char *filepath);
+int check_file_status(const char *filepath);
 
 int main(int argc, char *argv[]) {
 
@@ -64,6 +68,30 @@ void init_repo() {
 }
 
 void add_file(const char *filepath) {
+  printf("Filepath: %s\n", filepath);
+  // get the absolute path of the original file
+  char original_path[512];
+  if (!realpath(filepath, original_path)) {
+    perror("Failed to resolve absolute path");
+    return;
+  }
+  printf("Absolute path: %s\n", original_path);
+
+  // check if the file is a symlink
+  int status = check_file_status(filepath);
+  printf("Status: %d\n", status);
+  if (status == 1) {
+    // already tracked by dotman
+    return;
+  } else if (status == 3) {
+    // user chose to skip external symlink
+    return;
+  } else if (status == 2) {
+    // User chose to import external symlink
+    // In this case, you may want to replace filepath with the target
+    // e.g., filepath = target from check_file_status
+  }
+
   // get the repo_path
   const char *home = getenv("HOME");
   if (!home) {
@@ -111,9 +139,70 @@ void add_file(const char *filepath) {
 
   // Move the org file to dotman
   rename(filepath, dest_path);
-  if (symlink(filepath, dest_path) == 0) {
-    printf("Tracked and linked %s → %s\n", filepath, filename);
+
+  if (access(filepath, F_OK) == 0) {
+    // Remove existing file/symlink
+    if (unlink(filepath) != 0) {
+      perror("Failed to remove existing file");
+      return;
+    }
+  }
+
+  if (symlink(dest_path, filepath) == 0) {
+    printf("Tracked and linked %s → %s\n", filepath, dest_path);
   } else {
     perror("Failed to create symlink");
   }
+  // Log to dotman.db
+  char db_path[512];
+  snprintf(db_path, sizeof(db_path), "%s/.dotman/dotman.db", home);
+  FILE *db = fopen(db_path, "a");
+  if (db) {
+    fprintf(db, "%s|%s\n", original_path, dest_path);
+    fclose(db);
+  } else {
+    perror("Failed to write to dotman.db");
+  }
+}
+
+int check_file_status(const char *filepath) {
+  struct stat path_stat;
+  // Check if the given path exists and is a symbolic link
+  if (lstat(filepath, &path_stat) == 0 &&
+      (path_stat.st_mode & S_IFMT) == S_IFLNK) {
+    char target[512];
+    ssize_t len = readlink(filepath, target, sizeof(target) - 1);
+
+    if (len == -1) {
+      perror("readlink failed");
+      return -1;
+    }
+
+    // null terminate target
+    target[len] = '\0';
+
+    printf("%s is a symlink → %s\n", filepath, target);
+
+    // case 1: already tracked by dotman
+    const char *home = getenv("HOME");
+    if (home && strstr(target, "/.dotman/files") != NULL) {
+      printf("Already tracked by dotman. Skipping.\n");
+      return 1;
+    }
+
+    // case 2: external symlink
+    printf("Do you want to import the target file (%s) into Dotman? [y/N]: ",
+           target);
+    char response = getchar();
+    if (response == 'y' || response == 'Y') {
+      printf("Importing target: %s\n", target);
+      // user wants to import
+      return 2;
+    } else {
+      printf("Skipping %s.\n", filepath);
+      // user chooses to skip
+      return 3;
+    }
+  }
+  return 0;
 }
