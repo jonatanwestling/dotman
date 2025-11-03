@@ -2,12 +2,13 @@
 CC = gcc
 CFLAGS = -Wall
 TARGET = dotman
-SRC = src/main.c
+SRC = src/main.c lib/dotman.c
+INC = -Iinclude
 
 all: $(TARGET)
 
 $(TARGET): $(SRC)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRC) $(INC)
 
 run: $(TARGET)
 	./$(TARGET)
