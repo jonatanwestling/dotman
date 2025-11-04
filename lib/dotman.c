@@ -30,7 +30,7 @@
  *               3 - external symlink, user chooses to skip
  *              -1 - error
  */
-static int check_file_status(const char *filepath) {
+int check_file_status(const char *filepath) {
   struct stat path_stat;
   if (lstat(filepath, &path_stat) == 0 && (path_stat.st_mode & S_IFMT) == S_IFLNK) {
     char target[PATH_MAX];
@@ -189,4 +189,30 @@ int dotman_add(const char *filepath) {
   }
 
   return 0;
+}
+
+int dotman_list_tracked_files(void) {
+    const char *home = getenv("HOME");
+    if (!home) {
+        fprintf(stderr, "Could not get HOME directory.\n");
+        return -1;
+    }
+    char db_path[PATH_MAX];
+    snprintf(db_path, sizeof(db_path), "%s/.dotman/dotman.db", home);
+    FILE *db = fopen(db_path, "r");
+    if (!db) {
+        perror("Failed to open dotman.db");
+        return -1;
+    }
+    char line[PATH_MAX * 2];
+    printf("Tracked files:\n");
+    while (fgets(line, sizeof(line), db)) {
+        char *original = strtok(line, "|");
+        char *stored = strtok(NULL, "\n");
+        if (original && stored) {
+            printf("Original: %s -> Stored: %s\n", original, stored);
+        }
+    }
+    fclose(db);
+    return 0;
 }

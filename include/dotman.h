@@ -16,12 +16,9 @@ int dotman_init(void);
  */
 int dotman_add(const char *filepath);
 
-#endif /* DOTMAN_H */
-#ifndef DOTMAN_H
-#define DOTMAN_H
-
-int init_repo();
-int add_file(const char *filepath);
 int check_file_status(const char *filepath);
 
+int dotman_list_tracked_files(void);
+
 #endif /* DOTMAN_H */
+
