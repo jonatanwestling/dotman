@@ -10,6 +10,7 @@ typedef enum {
     CMD_LIST,
     CMD_UNLINK,
     CMD_HELP,
+    CMD_SYNC
 } Command;
 
 Command parse_command(const char *arg) {
@@ -18,6 +19,7 @@ Command parse_command(const char *arg) {
     if (strcmp(arg, "list") == 0) return CMD_LIST;
     if (strcmp(arg, "unlink") == 0) return CMD_UNLINK;
     if (strcmp(arg, "help") == 0) return CMD_HELP;
+    if (strcmp(arg, "sync") == 0) return CMD_SYNC;
     return CMD_UNKNOWN;
 }
 
@@ -57,6 +59,13 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
             printf("Unlinking file: %s\n", argv[2]);
+            dotman_remove(argv[2]);
+            break;
+
+        case CMD_SYNC:
+            printf("Syncing tracked files...\n");
+            printf("TODO: Implement sync functionality\n");
+            // TODO: implement sync logic here
             break;
 
         case CMD_HELP:
@@ -67,6 +76,7 @@ int main(int argc, char *argv[]) {
             printf("  add <file>     Add a file to the dotman repository\n");
             printf("  list           List all tracked files\n");
             printf("  unlink <file>  Unlink a tracked file\n");
+            printf("  sync           Sync the dotman repository\n");
             printf("  help           Show this help message\n");
             break;
 
