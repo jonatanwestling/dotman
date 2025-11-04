@@ -16,6 +16,8 @@ int dotman_init(void);
  */
 int dotman_add(const char *filepath);
 
+int dotman_remove(const char *filepath);
+
 int check_file_status(const char *filepath);
 
 int dotman_list_tracked_files(void);

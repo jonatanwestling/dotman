@@ -1,29 +1,30 @@
 /**
  * @file dotman.c
  * @author Jonatan Westling
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2025-11-03
- * 
+ *
  * @copyright Copyright (c) 2025
- * 
+ *
  */
 #include "dotman.h"
 
+#include <errno.h>
+#include <libgen.h>
+#include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <libgen.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <limits.h>
+#include <unistd.h>
 
 /**
  * @brief check the status of the given file path.
- * 
- * @param filepath 
+ *
+ * @param filepath
  * @return int : 0 - normal file
  *               1 - already tracked by dotman
  *               2 - external symlink, user wants to import
@@ -32,7 +33,8 @@
  */
 int check_file_status(const char *filepath) {
   struct stat path_stat;
-  if (lstat(filepath, &path_stat) == 0 && (path_stat.st_mode & S_IFMT) == S_IFLNK) {
+  if (lstat(filepath, &path_stat) == 0 &&
+      (path_stat.st_mode & S_IFMT) == S_IFLNK) {
     char target[PATH_MAX];
     ssize_t len = readlink(filepath, target, sizeof(target) - 1);
     if (len == -1) {
@@ -48,10 +50,12 @@ int check_file_status(const char *filepath) {
       return 1;
     }
 
-    printf("Do you want to import the target file (%s) into Dotman? [y/N]: ", target);
+    printf("Do you want to import the target file (%s) into Dotman? [y/N]: ",
+           target);
     int c = getchar();
     /* consume leftover newline if any */
-    while (c != '\n' && c != EOF) break;
+    while (c != '\n' && c != EOF)
+      break;
     if (c == 'y' || c == 'Y') {
       printf("Importing target: %s\n", target);
       return 2;
@@ -65,7 +69,7 @@ int check_file_status(const char *filepath) {
 
 /**
  * @brief Initialize the dotman repository.
- * 
+ *
  * @return int 0 on success, non-zero on error
  */
 int dotman_init(void) {
@@ -97,12 +101,13 @@ int dotman_init(void) {
 
 /**
  * @brief Add a file to the dotman repository and replace it with a symlink.
- * 
+ *
  * @param filepath
  * @return int 0 on success, non-zero on error
  */
 int dotman_add(const char *filepath) {
-  if (!filepath) return -1;
+  if (!filepath)
+    return -1;
   printf("Filepath: %s\n", filepath);
 
   char original_path[PATH_MAX];
@@ -128,21 +133,24 @@ int dotman_add(const char *filepath) {
 
   char file_copy[PATH_MAX];
   strncpy(file_copy, filepath, sizeof(file_copy));
-  file_copy[sizeof(file_copy)-1] = '\0';
+  file_copy[sizeof(file_copy) - 1] = '\0';
   char *filename = basename(file_copy);
 
   char dest_path[PATH_MAX];
   snprintf(dest_path, sizeof(dest_path), "%s/%s", repo_path, filename);
 
   char backup_path[PATH_MAX];
-  snprintf(backup_path, sizeof(backup_path), "%s/.dotman/backup/%s", home, filename);
+  snprintf(backup_path, sizeof(backup_path), "%s/.dotman/backup/%s", home,
+           filename);
 
   FILE *src = fopen(filepath, "r");
   FILE *backup = fopen(backup_path, "w");
   if (!src || !backup) {
     perror("Error opening files");
-    if (src) fclose(src);
-    if (backup) fclose(backup);
+    if (src)
+      fclose(src);
+    if (backup)
+      fclose(backup);
     return -1;
   }
 
@@ -192,27 +200,111 @@ int dotman_add(const char *filepath) {
 }
 
 int dotman_list_tracked_files(void) {
-    const char *home = getenv("HOME");
-    if (!home) {
-        fprintf(stderr, "Could not get HOME directory.\n");
-        return -1;
+  const char *home = getenv("HOME");
+  if (!home) {
+    fprintf(stderr, "Could not get HOME directory.\n");
+    return -1;
+  }
+  char db_path[PATH_MAX];
+  snprintf(db_path, sizeof(db_path), "%s/.dotman/dotman.db", home);
+  FILE *db = fopen(db_path, "r");
+  if (!db) {
+    perror("Failed to open dotman.db");
+    return -1;
+  }
+  char line[PATH_MAX * 2];
+  printf("Tracked files:\n");
+  while (fgets(line, sizeof(line), db)) {
+    char *original = strtok(line, "|");
+    char *stored = strtok(NULL, "\n");
+    if (original && stored) {
+      printf("Original: %s -> Stored: %s\n", original, stored);
     }
-    char db_path[PATH_MAX];
-    snprintf(db_path, sizeof(db_path), "%s/.dotman/dotman.db", home);
-    FILE *db = fopen(db_path, "r");
-    if (!db) {
-        perror("Failed to open dotman.db");
-        return -1;
+  }
+  fclose(db);
+  return 0;
+}
+
+int dotman_remove(const char *filepath) {
+  if (!filepath)
+    return -1;
+
+  // Resolve user input to absolute path
+  char abs_input[PATH_MAX];
+  if (filepath[0] == '/') {
+    strncpy(abs_input, filepath, PATH_MAX);
+  } else {
+    char cwd[PATH_MAX];
+    if (!getcwd(cwd, sizeof(cwd))) {
+      perror("Failed to get current working directory");
+      return -1;
     }
-    char line[PATH_MAX * 2];
-    printf("Tracked files:\n");
-    while (fgets(line, sizeof(line), db)) {
-        char *original = strtok(line, "|");
-        char *stored = strtok(NULL, "\n");
-        if (original && stored) {
-            printf("Original: %s -> Stored: %s\n", original, stored);
-        }
-    }
+    snprintf(abs_input, sizeof(abs_input), "%s/%s", cwd, filepath);
+  }
+
+  const char *home = getenv("HOME");
+  if (!home) {
+    fprintf(stderr, "Could not get HOME directory.\n");
+    return -1;
+  }
+
+  char db_path[PATH_MAX];
+  snprintf(db_path, sizeof(db_path), "%s/.dotman/dotman.db", home);
+  FILE *db = fopen(db_path, "r");
+  if (!db) {
+    perror("Failed to open dotman.db");
+    return -1;
+  }
+
+  char temp_db_path[PATH_MAX];
+  snprintf(temp_db_path, sizeof(temp_db_path), "%s/.dotman/dotman.tmp", home);
+  FILE *temp_db = fopen(temp_db_path, "w");
+  if (!temp_db) {
+    perror("Failed to open temporary db file");
     fclose(db);
-    return 0;
+    return -1;
+  }
+
+  char line[PATH_MAX * 2];
+  int found = 0;
+  while (fgets(line, sizeof(line), db)) {
+    char *original = strtok(line, "|");
+    char *stored = strtok(NULL, "\n");
+
+    if (original && stored) {
+      if (strcmp(original, abs_input) == 0) {
+        found = 1;
+
+        // Remove the symlink in original location
+        if (unlink(abs_input) != 0) {
+          perror("Failed to remove symlink");
+        }
+
+        // Move the stored file back to original location
+        if (rename(stored, abs_input) != 0) {
+          perror("Failed to restore actual file");
+        }
+
+      } else {
+        // Keep the entry in the temporary db
+        fprintf(temp_db, "%s|%s\n", original, stored);
+      }
+    }
+  }
+
+  fclose(db);
+  fclose(temp_db);
+
+  if (found) {
+    if (rename(temp_db_path, db_path) != 0) {
+      perror("Failed to update dotman.db");
+      return -1;
+    }
+    printf("Unlinked and removed tracking for %s\n", abs_input);
+  } else {
+    unlink(temp_db_path);
+    printf("File %s not found in tracking database.\n", filepath);
+  }
+
+  return 0;
 }
