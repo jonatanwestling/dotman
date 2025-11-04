@@ -14,14 +14,11 @@
 #include <string.h>
 #include <sys/_types/_ssize_t.h>
 #include <unistd.h>
-
 #include <stdlib.h>
 #include <sys/stat.h>
-
-// add files
 #include <errno.h>
-#include <libgen.h> // for basename()
-#include <unistd.h> // for symlink(), access()
+#include <libgen.h>
+#include <unistd.h>
 
 #include "dotman.h"
 
@@ -34,7 +31,7 @@ int main(int argc, char *argv[]) {
 
   if (strcmp(argv[1], "init") == 0) {
     printf("Initializing dotman repository...\n");
-    dotman_init();
+     dotman_init();
   } else if (strcmp(argv[1], "add") == 0) {
     if (argc < 3) {
       printf("Usage: dotman add <file>\n");
@@ -44,7 +41,7 @@ int main(int argc, char *argv[]) {
     dotman_add(argv[2]);
   } else if (strcmp(argv[1], "list") == 0) {
     printf("Listing tracked files...\n");
-    // TODO: implement listing
+    dotman_list_tracked_files();
   } else {
     printf("Unknown command: %s\n", argv[1]);
   }
